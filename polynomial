@@ -1,0 +1,79 @@
+# polynomial
+# Please write a program calculating the value of the third degree polynomial for the given parameters a, b, c, d and x. The form of a polynomial: y = ax^3 + bx^2 + cx + d.
+
+# From: y = ax^3 + bx^2 + cx + d
+# given: a, b, c, d, x
+# result: y
+
+# $t0 will store the result y
+# $t1 will store the x value
+# $t2 - $t5 will store a, b, c, d
+
+.data 
+askForInput: .asciiz "Please input a, b, c, d and x\n"
+theResultIs: .asciiz "The result is equal to: "
+	
+.text
+prompt:
+	li $v0, 4
+	la $a0, askForInput
+	syscall
+	
+assigningVariables:
+	jal getInput
+	move $t2, $v0
+	jal getInput
+	move $t3, $v0
+	jal getInput
+	move $t4, $v0
+	jal getInput
+	move $t5, $v0
+	jal getInput
+	move $t1, $v0
+	j equation
+
+getInput:
+	li $v0, 5
+	syscall # Input is saved in $v0, remember to reasign it
+	jr $ra
+	
+# To calculate the polynomial I'm adding the coefficients going from d to a, accordingly increasing x
+equation:
+	add $t0, $t5, $zero # Simply adding d
+	move $t6, $t4 # Before every sum I move the coefficient into $t6
+	jal sum
+	move $t6, $t3
+	add $t7, $t1, $zero # To store x values for multiplication later
+	mult $t1, $t1 # x^2
+	mflo $t1
+	jal sum
+	mult $t1, $t7 # x^3 (this is "later")
+	mflo $t1
+	move $t6, $t2
+	jal sum
+	j printResult
+	
+# This method adds x to the result $t6 times. $t6 is the current coefficient
+# Every iteration it lowers the coefficient by 1
+# The if at the end checks if coefficient is bigger from 0:
+# if it is the loop starts again
+# if it isn't: jump back
+sum:
+	add $t0, $t0, $t1
+	addi $t6, $t6, -1
+	bgtz $t6 sum # if $t6 > 0 go back to sum
+	jr $ra
+	
+printResult:
+	li $v0, 4
+	la $a0, theResultIs
+	syscall
+	# Printing y
+	move $a0, $t0
+	li $v0, 1
+	syscall
+	
+exit:
+	li $v0, 10
+	syscall
+	
