@@ -1,0 +1,60 @@
+# polynomial
+# Please write a program calculating the value of the third degree polynomial for the given parameters a, b, c, d and x. The form of a polynomial: y = ax^3 + bx^2 + cx + d.
+
+# From: y = ax^3 + bx^2 + cx + d
+# given: a, b, c, d, x
+# result: y
+
+.data 
+askForInput: .asciiz "Please input x, a, b, c, d accordingly\n"
+theResultIs: .asciiz "The result is: "
+	
+.text
+prompt:
+	li $v0, 4
+	la $a0, askForInput
+	syscall
+	
+main:
+	li $v0, 5
+	syscall # Input is saved in $v0
+	# Cubing x
+	move $t2, $v0
+	mult $t2, $t2
+	mflo $t1
+	mult $t2, $t1
+	mflo $t1
+	jal sum
+	# Squaring x
+	mult $t2, $t2
+	mflo $t1
+	jal sum
+	move $t1, $t2
+	jal sum
+	# For d x must me equal to one
+	addi $t1, $zero, 1
+	jal sum
+	j printResult
+	
+# Reads input coefficient and add x coefficient amount of times
+sum:	
+	li $v0, 5
+	syscall # Input is saved in $v0
+	loop:
+		add $t0, $t0, $t1
+		addi $v0, $v0, -1
+		bgtz $v0 loop	# if $v0 > 0 go back to the beggining of the loop
+		jr $ra		# else go back
+	 
+printResult:
+	li $v0, 4
+	la $a0, theResultIs
+	syscall
+	# Printing y
+	move $a0, $t0
+	li $v0, 1
+	syscall
+	
+exit:
+	li $v0, 10
+	syscall
