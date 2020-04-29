@@ -55,7 +55,7 @@ equation:
 	
 # This method adds x to the result $t6 times. $t6 is the current coefficient
 # Every iteration it lowers the coefficient by 1
-# The if at the end checks if coefficient is bigger from 0:
+# The if at the end checks if coefficient is bigger than 0:
 # if it is the loop starts again
 # if it isn't: jump back
 sum:
@@ -76,4 +76,3 @@ printResult:
 exit:
 	li $v0, 10
 	syscall
-	
