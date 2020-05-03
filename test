@@ -1,0 +1,26 @@
+.data
+array:
+
+# s0 will store the array adress, s1 will store the last added elems adress
+.text
+la $s0 array
+addi $t0, $0, 1024
+addi $t1, $0, 6
+sw $t1, array($t0)
+addi $t0, $0, 2048
+addi $t1, $0, 17
+sw $t1, array($t0)
+
+
+	addi $t0, $0, 1024
+	lw $a0, array($t0)
+	li $v0, 1
+	syscall
+	addi $t0, $0, 2048
+	lw $a0, array($t0)
+	li $v0, 1
+	syscall
+	
+exit:
+	li $v0, 10
+	syscall
