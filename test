@@ -1,26 +1,80 @@
 .data
-array:
 
-# s0 will store the array adress, s1 will store the last added elems adress
+Number1: .asciiz "\nPlease Enter the First Number, N1: "
+
+Number2: .asciiz "\nPlease Enter the Second Number, N2: "
+
+Result:   .asciiz "\nThe Result of the Product is: "
+
+High:     .asciiz "\nContents of Register HI: "
+
+Low:      .asciiz "\nContents of Register LO: "
+
 .text
-la $s0 array
-addi $t0, $0, 1024
-addi $t1, $0, 6
-sw $t1, array($t0)
-addi $t0, $0, 2048
-addi $t1, $0, 17
-sw $t1, array($t0)
 
+.globl main
 
-	addi $t0, $0, 1024
-	lw $a0, array($t0)
-	li $v0, 1
-	syscall
-	addi $t0, $0, 2048
-	lw $a0, array($t0)
-	li $v0, 1
-	syscall
-	
-exit:
-	li $v0, 10
-	syscall
+.text
+main:
+
+     li $v0, 4
+
+     la $a0, Number1
+
+     syscall
+
+     li $v0, 5
+
+     syscall
+
+     add $t0, $v0, $zero
+
+     li $v0, 4
+
+     la $a0, Number2
+
+     syscall
+
+     li $v0, 5
+
+     syscall
+
+     add $t1, $v0, $zero
+
+     mult $t0, $t1
+
+     li $v0, 4
+
+     la $a0, Result
+
+     syscall
+
+     li $v0, 4
+
+     la $a0, High
+
+     syscall
+
+     li $v0, 1
+
+     mfhi $a0
+
+     syscall
+
+     li $v0, 4
+
+     la $a0, Low
+
+     syscall
+
+     li $v0, 1
+
+     mflo $a0
+
+     syscall
+
+End_Prog:
+
+     li $v0, 10
+
+     syscall
