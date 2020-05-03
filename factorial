@@ -1,0 +1,42 @@
+# -------------------------------- Jakub Seredyñski 254598 ------------------------------------------
+
+#Please write a program that asks the user for the value N>0, then calculates and displays the value N! (factorial of N).
+#Secure the program against the overflow problem (best: chcek for overflow after each multiplication).
+# Write the program in two versions "do-while" and "while-do".
+# Answer the question: for what maximum value of N the program gives the correct value of N!. 
+#Optional: prepare version of the above program that calculates N! for N up to 50.
+
+.data
+askForInput: .asciiz "Please input a number > 0"
+theResultIs: .asciiz "The result is equal to: "
+
+.text
+prompt:
+	li $v0, 4
+	la $a0, askForInput
+	syscall
+getInput:
+	li $v0, 5
+	syscall # Input is saved in $v0, remember to reasign it
+	move $t0, $v0
+	
+Factorial:
+	addi $v0, $v0, -1
+	bgtz $v0 proceed
+	j printResult
+	proceed:
+		mult $t0, $v0
+		mflo $t0
+		j Factorial
+printResult:
+	li $v0, 4
+	la $a0, theResultIs
+	syscall
+	# Printing result
+	move $a0, $t0
+	li $v0, 1
+	syscall
+	
+exit:
+	li $v0, 10
+	syscall
