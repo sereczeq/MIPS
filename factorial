@@ -24,6 +24,11 @@ getInput:
 	syscall
 	move $s0, $v0
 
+IfZero:
+	li $s1, 1
+	li $s2, 1
+	beq $s0, $0, printResult
+
 # Factorial while do
 FactorialW:
 	addi $t0, $s0, 1
