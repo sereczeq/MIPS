@@ -1,5 +1,6 @@
 # -------------------------------- Jakub Seredyñski 254598 ------------------------------------------
 
+
 #Please write a program that asks the user for the value N>0, then calculates and displays the value N! (factorial of N).
 #Secure the program against the overflow problem (best: chcek for overflow after each multiplication).
 # Write the program in two versions "do-while" and "while-do".
@@ -8,9 +9,11 @@
 
 .data
 askForInput: .asciiz "Please input a number > 0: "
-theResultIs: .asciiz "The result is equal to: "
-thereIsAnOverflow: .asciiz "There is an overflow, finishing the calculations\n"
+theResultIs: .asciiz "\nThe result is equal to: "
+thereIsAnOverflow: .asciiz "There is an overflow, finishing the calculations :(\n"
 
+# The input is saved in $s0
+# The results are saved in $s1 and $s2
 .text
 prompt:
 	li $v0, 4
@@ -18,38 +21,66 @@ prompt:
 	syscall
 getInput:
 	li $v0, 5
-	syscall # Input is saved in $v0, remember to reasign it
-	move $t0, $v0
-# Factorial while do. "W" everywhere stands for While do
-FactorialW:
-	addi $v0, $v0, -1
-	bgtz $v0 proceedW
-	j printResultW
-	proceedW:
-		mult $t0, $v0
-		mfhi $t0
-		bgtz $t0 printOverflowW
-		mflo $t0
-		j FactorialW
-		
-printOverflowW:
-	li $v0, 4
-	la $a0 thereIsAnOverflow
-	syscall	
-	j exit
+	syscall
+	move $s0, $v0
 
-printResultW:
+# Factorial while do
+FactorialW:
+	addi $t0, $s0, 1
+	li $t1, 1
+	loopW:
+		# While
+		addi $t0, $t0, -1
+		beq $t0, $0, saveW
+		# Do
+		mult $t1, $t0
+		mfhi $t1
+		bgtz $t1 printOverflow
+		mflo $t1
+		j loopW
+	saveW:
+		move $s1, $t1
+		
+# Factorial do while
+FactorialD:
+	li $t0, 1
+	li $t1, 1
+	loopD:
+		# Do
+		mult $t0, $t1
+		mfhi $t0
+		bgtz $t0 printOverflow
+		mflo $t0
+		# While
+		beq $t1, $s0, saveD
+		addi $t1, $t1, 1
+		j loopD
+	saveD:
+		move $s2, $t0
+
+printResult:
 	li $v0, 4
 	la $a0, theResultIs
 	syscall
-	# Printing result
-	move $a0, $t0
+	# Printing result W
+	move $a0, $s1
 	li $v0, 1
 	syscall
 	
-FactorialD:
-	li $t1
+	li $v0, 4
+	la $a0, theResultIs
+	syscall
+	# Printing result D
+	move $a0, $s2
+	li $v0, 1
+	syscall
 
 exit:
 	li $v0, 10
 	syscall
+	
+printOverflow:
+	li $v0, 4
+	la $a0 thereIsAnOverflow
+	syscall
+	j exit
