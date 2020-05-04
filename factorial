@@ -7,8 +7,9 @@
 #Optional: prepare version of the above program that calculates N! for N up to 50.
 
 .data
-askForInput: .asciiz "Please input a number > 0"
+askForInput: .asciiz "Please input a number > 0: "
 theResultIs: .asciiz "The result is equal to: "
+thereIsAnOverflow: .asciiz "There is an overflow, finishing the calculations\n"
 
 .text
 prompt:
@@ -19,16 +20,25 @@ getInput:
 	li $v0, 5
 	syscall # Input is saved in $v0, remember to reasign it
 	move $t0, $v0
-	
-Factorial:
+# Factorial while do. "W" everywhere stands for While do
+FactorialW:
 	addi $v0, $v0, -1
-	bgtz $v0 proceed
-	j printResult
-	proceed:
+	bgtz $v0 proceedW
+	j printResultW
+	proceedW:
 		mult $t0, $v0
+		mfhi $t0
+		bgtz $t0 printOverflowW
 		mflo $t0
-		j Factorial
-printResult:
+		j FactorialW
+		
+printOverflowW:
+	li $v0, 4
+	la $a0 thereIsAnOverflow
+	syscall	
+	j exit
+
+printResultW:
 	li $v0, 4
 	la $a0, theResultIs
 	syscall
@@ -37,6 +47,9 @@ printResult:
 	li $v0, 1
 	syscall
 	
+FactorialD:
+	li $t1
+
 exit:
 	li $v0, 10
 	syscall
