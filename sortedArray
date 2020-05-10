@@ -14,6 +14,12 @@ loop:
 reset:
 	la $t0, array
 	li $t1, 0
+	j sort
+swap:
+	
+sort:
+	
+
 printArray:
 	lw $a0, 0($t0)
 	addi $t1, $t1, 1
