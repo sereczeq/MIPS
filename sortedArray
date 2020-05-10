@@ -1,0 +1,30 @@
+.data
+.align 4
+array: .space 1000
+commaSpace: .asciiz ", "
+.text
+la $t0, array
+li $t1, 0
+li $t2, 250
+loop:
+	lw $t1, 0($t0)
+	addi $t1, $t1, 1
+	addi $t0, $t0, 4
+	bne $t1, $t2, loop
+reset:
+	la $t0, array
+	li $t1, 0
+printArray:
+	lw $a0, 0($t0)
+	addi $t1, $t1, 1
+	addi $t0, $t0, 4
+	li $v0, 1
+	syscall
+	li $v0, 4
+	la $a0, commaSpace
+	syscall
+	bne $t1, $t2, printArray
+	
+exit:
+	li $v0, 10
+	syscall
