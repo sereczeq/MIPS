@@ -1,0 +1,116 @@
+# -------------------------------- Jakub Seredyñski 254598 ------------------------------------------
+
+# List 3 (14.05.2020):
+# Please write a program that asks you to enter N<100,
+# then reads N integers from the keyboard,
+# sorts them in ascending order and displays a sorted sequence of numbers on the screen
+# (preferably separated by commas).
+# Sorting algorithm: bubble-sort (or more advanced if you like).
+# A.) without calling subroutines.
+# Only the Sort procedure is called between the reading input data and printing of results.
+.data
+
+.align 4			# align 4 because we are using integers
+array: .space 400 		# only 100 (the max size) * 4 (int size) = 400 bytes stored
+
+askForInputSize: .asciiz "Please input the size of the array\n"
+askForInputNums: .asciiz "Please input the integers\n"
+unsortedArray: .asciiz "Unsorted array: "
+sortedArray: .asciiz "Sorted array: "
+commaSpace: .asciiz ", "
+enter: .asciiz "\n"
+
+.text
+
+# The adress of the begining of the array will be stored in $t0
+# The size of the array will be stored in $t1
+# $t2 will be used for multiple purposes
+# $t7, $t8, $t9 will be used to compare values from the array
+
+promptAskForInput:
+	li $v0, 4
+	la $a0, askForInputSize
+	syscall
+	
+	li $v0, 5
+	syscall
+	move $t1, $v0
+	
+	beq $t1, $0, promptAskForInput
+	li $t2, 1
+	beq $t1, $t2 promptAskForInput	# if the size is 1 there is no need to sort (also causes error at * )
+	bltz $t1, promptAskForInput
+	
+	li $v0, 4
+	la $a0, askForInputNums
+	syscall
+	
+setUpArray:
+	la $t0, array		# adress of the begining of the array
+	li $t2, 4		# 4 is a byte size of an integer
+	mult $t1, $t2		# multiply number of ints by size
+	mflo $t1
+	add $t1, $t1, $t0	# add size of array to the beggining of an array to know when it should end
+	
+loopAdd:
+	li $v0, 5
+	syscall
+	sw $v0, 0($t0)		# store word in the array
+	addi $t0, $t0, 4	# next index
+	bne $t0, $t1, loopAdd	# if pos < size loop
+	
+printArrayUnsorted:
+	la $t0, array
+	li $v0, 4
+	la $a0, unsortedArray
+	syscall
+	
+	jal printArray
+	
+	li $v0, 4
+	la $a0, enter
+	syscall
+	
+	addi $t1, $t1, -4		# * -4 because I'm 'manually' accesing 4($t0) so could overflow
+	addi $t0, $t0, -4		# -4 because the beggining of the sort always adds 4
+sort:
+	addi $t0, $t0, 4
+	beq $t0, $t1, printArraySorted	# if at the end of the array, print result
+	lw $t8, 0($t0)
+	lw $t9, 4($t0)
+	slt $t7, $t9, $t8		# if $t9 < $t8 set $t7 to 1
+	beq $t7, $0, sort		# if $t7 == 0 nothing to change, go to beggining
+	sw $t8, 4($t0)			# else swap
+	sw $t9, 0($t0)
+	la $t0, array			#after swapping reset the position
+	addi $t0, $t0, -4		# -4 because the begginign of the sort always adds 4
+	j sort
+	
+printArraySorted:		
+	la $t0, array
+	addi $t1, $t1, 4		# adding 4 so size is correct after *
+	
+	li $v0, 4
+	la $a0, sortedArray
+	syscall
+	
+	jal printArray
+	j exit
+	
+printArray:
+	lw $a0, 0($t0)
+	addi $t0, $t0, 4
+	li $v0, 1
+	syscall
+	bne $t0, $t1, printComma	# if it is the last pos in the array, don't print the comma
+	jr $ra
+	printComma:
+		li $v0, 4
+		la $a0, commaSpace
+		syscall
+		j printArray
+
+exit:
+	li $v0, 10
+	syscall
+	
