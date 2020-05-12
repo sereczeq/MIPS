@@ -13,7 +13,7 @@
 array: .space 400 		# only 100 (the max size) * 4 (int size) = 400 bytes stored
 
 askForInputSize: .asciiz "Please input the size of the array\n"
-askForInputNums: .asciiz "Please input the correct ammount of integers\n"
+askForInputNums: .asciiz "Please input the integers\n"
 unsortedArray: .asciiz "Unsorted array: "
 sortedArray: .asciiz "Sorted array: "
 commaSpace: .asciiz ", "
@@ -34,6 +34,11 @@ promptAskForInput:
 	li $v0, 5
 	syscall
 	move $t1, $v0
+	
+	beq $t1, $0, promptAskForInput
+	li $t2, 1
+	beq $t1, $t2 promptAskForInput	# if the size is 1 there is no need to sort (also causes error at * )
+	bltz $t1, promptAskForInput
 	
 	li $v0, 4
 	la $a0, askForInputNums
