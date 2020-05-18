@@ -28,8 +28,53 @@ enter: .asciiz "\n"
 
 # The adress of the begining of the array will be stored in $t0
 # The size of the array will be stored in $t1
-# $t2 will be used for multiple purposes
-# $ax will be used as arguments for swap subroutine
+# $t2, $t3 will be used for multiple purposes
+# $t7, $t8, $t9 will be used to compare values from the array
+
+main:
+	jal promptAskForInput
+	jal setUpArray
+	jal printArrayUnsorted
+	
+	jal sort
+	
+	jal printArraySorted
+	j exit
+
+
+sort:
+	reset:
+		la $t0, array
+		li $t2, 0
+	loop:
+		lw $t8, 0($t0)
+		lw $t9, 4($t0)
+		slt $t7, $t9, $t8	# if $t9 < $t8 set $t7 to 1
+		beq $t7, $0, proceed	# if $t7 is 0 procced, if it's one swap
+		
+	jalSwap:
+		addi $t2, $0, 1		# $t2 changes to 1 so program can recognize that something was swapped
+	
+		addiu $sp, $sp, -4	# allocating space in stack
+		sw $ra, 0($sp)		# saving $ra in stack
+		jal swap		# jump and link would overwrite $ra, but it's saved in stack
+		lw $ra, 0($sp)		# restoring $ra from stack
+		addiu $sp, $sp, 4	# freeing allocated space from stack
+		
+	proceed:
+		addi $t0, $t0, 4
+		addi $t3, $t1, -4	# -4 because I'm 'manually' accesing 4($t0) so could overflow
+		bne $t0, $t3, loop	# only if we go to the last pos of array,
+		bne $t2, $0, reset	# and we didn't do any swapps, program can continue
+	jr $ra
+	
+	
+	swap:	# swap as separate subroutine returning to $ra
+		sw $t8, 4($t0)
+		sw $t9, 0($t0)
+		
+		jr $ra
+		
 
 promptAskForInput:
 	li $v0, 4
@@ -49,6 +94,8 @@ promptAskForInput:
 	la $a0, askForInputNums
 	syscall
 	
+	jr $ra
+	
 setUpArray:
 	la $t0, array		# adress of the begining of the array
 	li $t2, 4		# 4 is a byte size of an integer
@@ -56,12 +103,13 @@ setUpArray:
 	mflo $t1
 	add $t1, $t1, $t0	# add size of array to the beggining of an array to know when it should end
 	
-loopAdd:
-	li $v0, 5
-	syscall
-	sw $v0, 0($t0)		# store word in the array
-	addi $t0, $t0, 4	# next index
-	bne $t0, $t1, loopAdd	# if pos < size loop
+	loopAdd:
+		li $v0, 5
+		syscall
+		sw $v0, 0($t0)		# store word in the array
+		addi $t0, $t0, 4	# next index
+		bne $t0, $t1, loopAdd	# if pos < size loop
+	jr $ra
 	
 printArrayUnsorted:
 	la $t0, array
@@ -69,59 +117,34 @@ printArrayUnsorted:
 	la $a0, unsortedArray
 	syscall
 	
-	jal printArray
-	
-	li $v0, 4
-	la $a0, enter
-	syscall
-	
-	addi $t1, $t1, -4		# * -4 because I'm 'manually' accesing 4($t0) so could overflow
-	addi $t0, $t0, -4		# -4 because the beggining of the sort always adds 4
-sort:
-	addi $t0, $t0, 4
-	beq $t0, $t1, $sp		# if at the end of the array, print result
-	lw $a1, 0($t0)
-	lw $a2, 4($t0)
-	slt $a0, $a2, $a1		# if $t9 < $t8 set $t7 to 1
-	beq $a0, $0, sort		# if $t7 == 0 nothing to change, go to beggining
-	sw $sp, $ra
-	addi $sp, $sp, 4
-	jal swap			# else swap
-	j sort
-
-	
-swap:		
-	sw $a1, 4($t0)
-	sw $a2, 0($t0)
-	la $t0, array			#after swapping reset the position
-	addi $t0, $t0, -4		# -4 because the begginign of the sort always adds 4
-	la $a0, 0			# reset $a0 - swapping finished
-	jr $ra
+	j printArray
 
 printArraySorted:		
-	la $t0, array
-	addi $t1, $t1, 4		# adding 4 so size is correct after *
-	
 	li $v0, 4
 	la $a0, sortedArray
 	syscall
 	
-	jal printArray
-	j exit
-
+	j printArray
 	
 printArray:
+la $t0, array
+	printArrayCode:
 	lw $a0, 0($t0)
 	addi $t0, $t0, 4
 	li $v0, 1
 	syscall
 	bne $t0, $t1, printComma	# if it is the last pos in the array, don't print the comma
+		
+	li $v0, 4
+	la $a0, enter
+	syscall
+	
 	jr $ra
 	printComma:
 		li $v0, 4
 		la $a0, commaSpace
 		syscall
-		j printArray
+		j printArrayCode
 
 exit:
 	li $v0, 10

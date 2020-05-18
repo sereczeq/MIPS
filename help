@@ -1,0 +1,104 @@
+.data
+inputN: .asciiz "How many numbers you want to sort?\n"
+inputNumbers: .asciiz "Enter these numbers:\n"
+newLine: .asciiz "\n"
+result: .asciiz "Your sorted numbers are:\n"
+
+.align 4
+array: .space 400
+
+.text
+jal input
+jal createArray
+jal sort
+jal exit
+
+
+input:
+#display first message
+li $v0,4
+la $a0,inputN
+syscall
+#take the number
+li $v0,5
+syscall
+#store value of N
+move $t1,$v0
+
+
+beq $t1,$0,input
+addi $t2,$zero,1
+beq $t1,$t2,input
+bltz $t1,input
+
+li $v0,4
+la $a0,inputNumbers
+syscall
+
+jr $ra
+
+#creating an array of a proper size
+createArray:
+la $t3,array
+
+addi $t2,$zero,4
+mult $t1,$t2
+mflo $t1
+add $t1,$t1,$t3
+
+
+
+#adding numbers to array
+addNumbers:
+li $v0,5
+syscall
+sw $v0,0($t3)
+addi $t3,$t3,4  #next 
+bne $t3,$t1,addNumbers
+jr $ra
+
+sort:
+ la $t3, array
+ addi $t3,$t3,-4
+ sorting:
+addi $t3,$t3,4
+beq $t3,$t1,print
+lw $t5,4($t3)
+lw $t4,0($t3)
+
+slt $t6,$t5,$t4
+beq $t6,$0,sorting
+#if needed,we are swapping numbers
+  sw $t5,0($t3)
+  sw $t4,4($t3) 
+ li $t6, 0
+ la $t3,array
+ addi $t3,$t3,-4
+ j sorting
+
+print:
+        la $t3, array
+    addi $t1, $t1, 4
+
+    li $v0, 4
+    la $a0, result
+    syscall
+
+
+    printArray:
+
+    lw $a0, 0($t3)
+    li $v0, 1
+    syscall
+    addi $t3, $t3, 4
+    bne $t3, $t1, breakA
+    jr $ra
+breakA:
+    li $v0, 4
+    la $a0, newLine
+    syscall
+    j printArray
+
+exit:
+    li $v0, 10
+    syscall

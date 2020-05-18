@@ -1,0 +1,83 @@
+# -------------------------------- Jakub Seredyñski 254598 ------------------------------------------
+
+# List 4 (21.05.2020):
+#Please write a program that asks to enter a string and then checks if the string is a palindrome or not.
+# If  the string is a palindrome the program should output "This is a palindrome"
+# and in other case it should output "This is not a palindrome".
+
+.data
+    buffer: .space 50
+    enterString:  .asciiz "Enter string: "
+    isPalindromeStr:  .asciiz "This is a palindrome"
+    notPalindromeStr:  .asciiz "This is not a palindrome"
+
+# $s0 is the oryginal adress of the string array
+# $s1 will store the size of array
+
+.text
+
+main:
+	jal getInput
+	jal getLength
+	jal palindromeCheck
+	j exit
+	
+getInput:
+	la $a0, enterString
+	li $v0, 4
+	syscall
+	
+	li $v0, 8
+	la $a0, buffer			# load byte space into address
+	li $a1, 50			# how many letters max
+	syscall
+    
+	move $s0, $a0			# save string adress at $s0
+	jr $ra
+	
+getLength:
+	move $t0, $s0
+	loopGetLength:
+		lb $t1, ($t0)		# load byte
+		addi $t0, $t0, 1	# pos++
+		beqz $t1, returnLength	# 0 means the end of the string, if reached the end, return
+		addi $t2, $t2, 1
+		j loopGetLength
+	returnLength:
+		move $s1, $t2
+		addi $s1, $s1, -1	# -1 because null character
+		jr $ra
+
+palindromeCheck:
+	move $t0, $s0			# $t0 - position from begining
+	move $t1, $s0			# $t1 - position from end
+	li $t2, 0
+	goToEndOfArray:			# setting $t1 to last position of string
+		addi $t1, $t1, 1
+		addi $t2, $t2, 1
+		bne $t2, $s1 goToEndOfArray
+		addi $t1, $t1, -1	# last pos = length - 1
+	loopPalindromeCheck:
+		lb $t2, ($t0)		# load byte from begining side
+		lb $t3, ($t1)		# load byte from end side
+		bne $t2, $t3, notPalindrome	# if not equal string is not palindrome
+		slt $t2, $t1, $t0
+		beqz $t2, isPalindrome	# if positions "passed" each other string is a palindrome
+		addi $t0, $t0, 1	# position from begining ++
+		addi $t1, $t1, -1	# position from begining --
+		j loopPalindromeCheck
+	
+	notPalindrome:
+		la $a0, notPalindromeStr
+		li $v0, 4
+		syscall
+		jr $ra
+		
+	isPalindrome:
+		la $a0, isPalindromeStr
+		li $v0, 4
+		syscall
+		jr $ra
+exit:
+	li $v0, 10
+	syscall
