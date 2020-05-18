@@ -61,8 +61,8 @@ palindromeCheck:
 		lb $t2, ($t0)		# load byte from begining side
 		lb $t3, ($t1)		# load byte from end side
 		bne $t2, $t3, notPalindrome	# if not equal string is not palindrome
-		slt $t2, $t1, $t0
-		beqz $t2, isPalindrome	# if positions "passed" each other string is a palindrome
+		slt $t2, $t0, $t1	# if positions "passed" each other string is a palindrome, set $t2 to 0
+		beqz $t2, isPalindrome	# if $t2 = 0 this is a palindrome, else continue checking
 		addi $t0, $t0, 1	# position from begining ++
 		addi $t1, $t1, -1	# position from begining --
 		j loopPalindromeCheck
