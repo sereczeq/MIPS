@@ -1,0 +1,455 @@
+.data
+
+#TODO: do I undestabd
+
+.word
+MatriceAStuff: .space 20
+.word
+MatriceBStuff: .space 20
+
+howManyDimensionsA: .asciiz "How many dimensions of matrice A? ( rows, columns)\n"
+howManyDimensionsB: .asciiz "How many dimensions of matrice B? ( rows, columns)\n"
+
+stringAskForInputA: .asciiz "Input coordinates of matrice A\n"
+stringAskForInputB: .asciiz "Input coordinates of matrice B\n"
+stringCantMultiply: .asciiz "Impossible to multiply, enter different dimensions\n"
+
+stringMatriceAIs: .asciiz "Matrice A:\n"
+stringMatriceBIs: .asciiz "Matrice B:\n"
+stringCommaSpace: .asciiz ", "
+stringEnter: .asciiz "\n"
+
+.text
+# $s0, $s3 store number arrays
+# $s1, $s4 store order arrays
+# $s2, $s5 store: 0 - size of number array, 4 - number of rows, 8 - number of columns, 12 - columns * rows
+# $s6 stores resulting number array
+# $s7 store resulting order array
+# number of rows and columns are taken from A and B matrix
+
+main:
+	jal askForDimensions
+	jal instantiateArrays
+	jal askForCoordinates
+	jal printMatrix
+	j exit
+	# Enter matrice A dimensions
+	# Enter matrice B dimensions
+	# Check if can multiply them
+	# Get input:
+		# 
+
+askForDimensions:
+	
+	la $s2, MatriceAStuff
+	la $s5, MatriceBStuff
+
+	li $v0, 4
+	la $a0, howManyDimensionsA
+	syscall
+	
+	# rows
+	li $v0, 5
+	syscall
+	sw $v0, 4($s2)				# store rows number in 4th space of $s2 array
+	move $t0, $v0
+	
+	# colums
+	li $v0, 5
+	syscall
+	sw $v0, 8($s2)
+	move $t1, $v0
+	
+	# overall size
+	mult $t0, $t1
+	mflo $t0
+	sw $t0, 12($s2)
+	
+	askForDimensionsB:
+	li $v0, 4
+	la $a0, howManyDimensionsB
+	syscall
+	
+	# rows
+	li $v0, 5
+	syscall
+	sw $v0, 4($s5)
+	move $t0, $v0
+	
+	# colums
+	li $v0, 5
+	syscall
+	sw $v0, 8($s5)
+	move $t1, $v0
+	
+	# overall size
+	mult $t0, $t1
+	mflo $t0
+	sw $t0, 12($s5)
+	
+	j checkIfCanMultiply
+	
+checkIfCanMultiply:
+	lw $t0, 8($s2)				# load columns of A
+	lw $t1, 4($s5)				# load rows of B
+	
+	bne $t0, $t1, cantMultiply		# check
+	
+	jr $ra
+	
+	cantMultiply:				# if can't multiply ask for b dimensions again
+		li $v0, 4
+		la $a0, stringCantMultiply
+		syscall
+		
+		j askForDimensionsB
+	
+instantiateArrays:
+	# matrice A
+	li $a0, 20		# $a0 - number to bytes to allocate
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s0, $v0		# save memory adress of numbers from vector A
+	
+	li $a0, 20		# $a0 - number to bytes to allocate
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s1, $v0		# save memory adress of order of vector A
+	
+	# matrice B
+	li $a0, 20		# $a0 - number to bytes to allocate
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s3, $v0		# save memory adress of numbers from vector B
+	
+	li $a0, 20		# $a0 - number to bytes to allocate
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s4, $v0		# save memory adress of order of vector B
+	
+	# both
+	li $t0, 20		# save the initial size of arrays
+	sw $t0, 0($s2)
+	sw $t0, 0($s5)
+	
+	jr $ra
+	
+	
+askForCoordinates:
+	# vector A
+	li $v0, 4
+	la $a0, stringAskForInputA
+	syscall
+	
+	# moving variables to temprorary registers
+	move $t0, $s0			# adress of Vector's A number array	
+	move $t1, $s1			# adress of Vector's A order array
+	lw $t2, 0($s2)			# size of the arrays
+	add $t3, $t0, $t2		# pointer to the end of the number array
+	lw $t4, 12($s2)			# full size
+	
+	#jalLoop:
+		addiu $sp, $sp, -4	# allocating space in stack
+		sw $ra, 0($sp)		# saving $ra in stack
+		jal loopAddVector	# jump and link would overwrite $ra, but it's saved in stack
+		lw $ra, 0($sp)		# restoring $ra from stack
+		addiu $sp, $sp, 4	# freeing allocated space from stack
+	#jalReset:
+		addiu $sp, $sp, -8
+		sw $ra, 0($sp)		# saving $ra in stack
+		sw $t3, 4($sp)		# saving $t3 in stack
+		jal reset
+		lw $ra, 0($sp)		# restoring $ra from stavk
+		lw $t3, 4($sp)		# restoring $t3 from stack
+		addiu $sp, $sp, 8
+	# moving changed variables to save them
+	move $s0, $t0	
+	move $s1, $t1
+	sw $t2, 0($s2)
+
+
+	#vector B
+	li $v0, 4
+	la $a0, stringAskForInputB
+	syscall
+	
+	# moving variables to temprorary registers
+	move $t0, $s3			# adress of Vector's B number array
+	move $t1, $s4			# adress of Vector's B order array
+	lw $t2, 0($s5)			# size of the arrays
+	add $t3, $t0, $t2		# pointer to the end of number array
+	lw $t4, 12($s5)			# full size
+	
+	#jalLoop:
+		addiu $sp, $sp, -4	# allocating space in stack
+		sw $ra, 0($sp)		# saving $ra in stack
+		jal loopAddVector	# jump and link would overwrite $ra, but it's saved in stack
+		lw $ra, 0($sp)		# restoring $ra from stack
+		addiu $sp, $sp, 4	# freeing allocated space from stack
+	#jalReset:
+		addiu $sp, $sp, -8
+		sw $ra, 0($sp)
+		sw $t3, 4($sp)
+		jal reset
+		lw $ra, 0($sp)
+		lw $t3, 4($sp)
+		addiu $sp, $sp, 8
+	# moving changed variables to save them
+	move $s3, $t0
+	move $s4, $t1
+	sw $t2, 0($s5)
+	
+	jr $ra
+
+reset:
+	# arguments:	$t0, $t1 - number and order array to find beggining og
+	#		$t2 - size of the arrays
+	#		$t3 - adress of the end of arrays
+	# returns:	$t0, $t1 - adress of the beggining of arrays
+	# changes:	$t0, $t1, $t3
+	
+	# sometimes the array won't be full, meaning that the stored adress might be the middle of it
+	# to get back to the beggining algorithm goes to the back of the array first, then goes back to the beggining size times
+	loopGoToEnd:
+	beq $t0, $t3, goToStart
+	addi $t0, $t0, 4
+	addi $t1, $t1, 4
+	j loopGoToEnd		
+	
+	goToStart:
+	move $t3, $t2
+		loopGoToStart:
+			beqz $t3, returnReset
+			addi $t0, $t0, -4
+			addi $t1, $t1, -4
+			addi $t3, $t3, -4
+			j loopGoToStart
+	returnReset:
+	jr $ra
+										
+loopAddVector:
+	beqz $t4, returnLoopAddVector		# if user put declared amount of dimensions, stop
+	addi $t4, $t4, -1
+	
+	li $v0, 5
+	syscall
+	bnez $v0, justAdd			# if number is nonzero add it
+	
+	#case if input is zero, add 1 to the order array at proper place
+	lw $t5, ($t1)
+	addi $t5, $t5, 1
+	sw $t5, ($t1)
+	j loopAddVector
+	
+	#case if input isn't zero
+	justAdd:
+	sw $v0, ($t0)				# store input in the proper place in number array
+	lw $t5, ($t1)				# load order value
+	addi $t5, $t5, 1			# add one to the order value (indexing should start at 0 but 1 looks nicer in the output)
+	sw $t5, ($t1)				# storing order value expanded by 1
+	sw $t5, 4($t1)				# adding the order value to next space in order arrag
+	
+	addi $t0, $t0, 4			# pos++
+	addi $t1, $t1, 4
+	
+	bne $t0, $t3 loopAddVector		# if pos == size appendArray, else loop
+	
+	#jalAppendArray
+		# for number array
+		addiu $sp, $sp, -20
+		sw $ra, 0($sp)
+		sw $t1, 4($sp)			# save order array
+		sw $t2, 8($sp)			# save size of arrays
+		sw $t3, 12($sp)			# save whatever those two are
+		sw $t4, 16($sp)
+		move $t1, $t2			# move size to $t1 because append wants it there
+		jal appendArray
+		lw $ra, 0($sp)
+		lw $t1, 4($sp)			# restore order array
+		lw $t2, 8($sp)			# restore size (it changes later *)
+		lw $t3, 12($sp)			# restore whatever those two are
+		lw $t4, 16($sp)
+		addiu $sp, $sp, 20
+		
+		#for order array
+		addiu $sp, $sp, -20
+		sw $ra, 0($sp)
+		sw $t0, 4($sp)			# save number array
+		sw $t2, 8($sp)			# save size
+		sw $t3, 12($sp)			# save whatever those two are
+		sw $t4, 16($sp)
+		move $t0, $t1			# move order array to $t0 so append changes it
+		move $t1, $t2			# move size to $t1 because append wants it there
+		jal appendArray
+		move $t2, $t1			# save new size
+		move $t1, $t0			# get return array on proper place (order array)
+		lw $ra, 0($sp)
+		lw $t0, 4($sp)			# restore number array
+		lw $t2, 8($sp)			# restore size
+		lw $t3, 12($sp)			# restore whatever those two are
+		lw $t4, 16($sp)
+		addiu $sp, $sp, 20
+		
+		lw $t3, -4($t1)			# add the order
+		sw $t3, 0($t1)
+		
+		addi $t2, $t2, 20
+		addi $t3, $t0, 20		# update the adress, now it's adress of end of new number array
+#TODO add 4 again maybe?	
+	j loopAddVector
+	
+	returnLoopAddVector:
+		jr $ra
+		
+appendArray:
+	#arguments: 	$t0 - end of the array to append
+	#		$t1 - size of the array
+	#returns: 	$t0 - adress in appended array to the element that old $t0 was pointing to
+	# changes: 	$t0, $t1, $t2, $t3, $t4
+	
+	goToBegginig:
+		move $t2, $t1
+		loopGoToBeggining:		# to start any operation on array we need to start from it's beggining
+			beqz $t2, endLoopGoToBeggining
+			addi $t2, $t2, -4
+			addi $t0, $t0, -4
+			j loopGoToBeggining
+			endLoopGoToBeggining:
+	createBiggerArray:
+		addi $a0, $t1, 20		# adding 20 (4 * 5) to current size
+		li $v0, 9
+		syscall
+		move $t2, $v0			# moving new array adress to $t2
+		
+		add $t3, $t0, $t1		# adress of the last element of old array
+	rewriteData:
+		beq $t0, $t3, returnAppendArray
+		lw $t4, ($t0)			# load value from old
+		sw $t4, ($t2)			# store in new
+		addi $t0, $t0, 4		# pos++
+		addi $t2, $t2, 4
+		j rewriteData	
+	returnAppendArray:
+		move $t0, $t2			# move new array to $t0 (it's pointing to the same number as it was before)
+		addi $t1, $t0, 40		# expand size
+		
+		jr $ra
+		
+printMatrix:	
+	# print matrice A
+	move $t0, $s0				# move number array
+	move $t1, $s1				# move order array
+	lw $t2, 4($s2)				# number of rows
+	lw $t3, 8($s2)				# number of columns
+	lw $t4, 12($s2)				# overall size (rows * columns)
+	
+	li $v0, 4
+	la $a0, stringMatriceAIs
+	syscall
+	
+	#jal printMatrice
+		addi $sp, $sp, -4
+		sw $ra, ($sp)
+		jal printMatrice
+		lw $ra, ($sp)
+		addi $sp, $sp, 4
+		
+	# print matrice B
+	move $t0, $s3				# move number array
+	move $t1, $s4				# move order array
+	lw $t2, 4($s5)				# number of rows
+	lw $t3, 8($s5)				# number of columns
+	lw $t4, 12($s5)				# overall size (rows * columns)
+	
+	li $v0, 4
+	la $a0, stringMatriceBIs
+	syscall
+	
+	#jal printMatrice
+		addi $sp, $sp, -4
+		sw $ra, ($sp)
+		jal printMatrice
+		lw $ra, ($sp)
+		addi $sp, $sp, 4
+	
+	jr $ra
+	
+multiply:
+	move $t0, $s0			# number A
+	move $t1, $s1			# order A
+	move $t2, $s2			# stuff A
+	move $t3, $s3			# number B
+	move $t4, $s4			# order B
+	move $t5, $s5			# stuff B
+	
+	while(orderA < columnA * currRow)
+		while(orderB % columnB != currColumn) orderB.pos++
+			if (orderA < orderB) orderA.pos++, numberA++
+			else if(orderB < orderA) orderB.pos++, numberB++
+			else multiply, all++
+
+1, 2, 3, 4
+0, 0, 4, 0
+3, 4, 0, 0
+0, 0, 0, 0
+
+1, 2, 3, 4, 0, 0, 4, 0, 3, 4, 0, 0, 0, 0, 0, 0
+
+1, 2, 3, 4, 5, 0, 0, 3, 0, 4, 0, 0, 0, 0, 0, 0
+
+1, 2, 3, 4
+5, 0, 0, 3
+0, 4, 0, 0
+0, 0, 0, 0
+
+printMatrice:
+	# arguments:		$t0 - number array
+	#			$t1 - order array
+	#			$t2 - number of rows
+	#			$t3 - number of columns
+	#			$t4 - overall size
+	# returns		nothing - prints
+	# changes		$t0 - $t7
+	
+	li $t6, 0
+	printMatriceLoop:
+		beq $t6, $t4, returnPrintMatrice	# if at the end of number array, return
+		addi $t6, $t6, 1			# how many iterations done ++
+		
+		li $a0, 0			# load zero to print
+		lw $t5, ($t1)			# load number from order array
+		slt $t7, $t6, $t5		# if order > count - print zero
+		bgtz $t7, printZero
+
+		lw $a0, ($t0)			# else load current value
+		addi $t0, $t0, 4		# and go up indexes
+		addi $t1, $t1, 4
+		
+		printZero:			# doesn't really print only zero, I'm bad at naming
+		li $v0, 1
+		syscall
+		
+		li $v0, 4
+		la $a0, stringCommaSpace
+		syscall
+		
+		div $t6, $t3
+		mfhi $t5
+		beqz $t5, printEnter
+		
+		j printMatriceLoop
+		
+		printEnter:
+			li $v0, 4
+			la $a0, stringEnter
+			syscall
+			
+			j printMatriceLoop
+		
+	returnPrintMatrice:
+		jr $ra
+
+exit:
+	li $v0, 10
+	syscall	
+		

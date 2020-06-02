@@ -1,0 +1,408 @@
+# -------------------------------- Jakub Seredyñski 254598 ------------------------------------------
+
+#List 5 (28.05.2020):
+#Please write a program that asks to enter two sparse vectors, and then calculate their scalar product.
+# The sparse vector in its simplest version can be stored in memory as a pair of vectors -
+# - a value vector and an order vector with the same number of dimensions.
+# More memory-saving solutions will be scored higher.
+
+.data
+
+# strings:
+stringAskForDimensions: .asciiz "How many dimensions?\n"
+stringAskForInputA: .asciiz "Please input coordinates of vector A\n"
+stringAskForInputB: .asciiz "Please input coordinates of vector B\n"
+
+stringCommaSpace:.asciiz ", "
+
+stringVectorANumberVectorIs: .asciiz "Vector's A number vector is: \t{"
+stringVectorAOrderVectorIs: .asciiz "} \nVector's A order vector is: \t{"
+stringVectorBNumberVectorIs: .asciiz "}\nVector's B number vector is: \t{"
+stringVectorBOrderVectorIs: .asciiz "} \nVector's B order vector is: \t{"
+stringTheResultIs:.asciiz "}\nThe scalar product is: "
+.text
+
+# $s0, $s1, $s3, $s4 store the adresses of number arrays and order arrays
+# $s6 stores the dot product
+# $s2, $s5, $s7 store size of the vectors
+
+# To save space I store all elements in array of size 5 and expand it by 5 if needed
+# The initial vector is never saved
+# Program can be easily changed to have arrays of bigger/smaller size than 5, 5 just seemed elegant
+# Program prints and calculates one element of order vector too many,
+# it doesn't change the result (it point at 0 from number array)
+
+main:
+	jal askForDimensions
+	jal instantiateVectors
+	jal askForCoordinates
+	jal scalarProduct
+	jal printAll
+	j exit
+	
+askForDimensions:
+	li $v0, 4
+	la $a0, stringAskForDimensions
+	syscall
+	
+	li $v0, 5
+	syscall
+	
+	beqz $v0 askForDimensions	# if size is 0 ask again
+	bltz $v0 askForDimensions	# if size smaller than 0 ask again
+	move $s7, $v0			# else save size (number of dimensions) in $s7
+	li $t0, 4			# multiplying by 4 (int size)
+	mult $s7, $t0
+	mflo $s7		
+	
+	jr $ra
+	
+instantiateVectors:
+	li $a0, 20		# $a0 - number to bytes to allocate
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s0, $v0		# save memory adress of numbers from vector A
+	
+	li $a0, 20		# $a0 - number to bytes to allocate
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s1, $v0		# save memory adress of order of vector A
+	
+	li $a0, 20		# $a0 - number to bytes to allocate
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s3, $v0		# save memory adress of numbers from vector B
+	
+	li $a0, 20		# $a0 - number to bytes to allocate
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s4, $v0		# save memory adress of order of vector B
+	
+	li $s2, 20		# save the size of arrays
+	li $s5, 20
+	
+	jr $ra
+	
+askForCoordinates:
+	# vector A
+	li $v0, 4
+	la $a0, stringAskForInputA
+	syscall
+	
+	# moving variables to temprorary registers
+	move $t0, $s0			# adress of Vector's A number array	
+	move $t1, $s1			# adress of Vector's A order array
+	move $t2, $s2			# size of the arrays
+	add $t3, $t0, $t2		# pointer to the end of the number array
+	move $t4, $s7			# how many dimensions
+	
+	#jalLoop:
+		addiu $sp, $sp, -4	# allocating space in stack
+		sw $ra, 0($sp)		# saving $ra in stack
+		jal loopAddVector	# jump and link would overwrite $ra, but it's saved in stack
+		lw $ra, 0($sp)		# restoring $ra from stack
+		addiu $sp, $sp, 4	# freeing allocated space from stack
+	#jalReset:
+		addiu $sp, $sp, -8
+		sw $ra, 0($sp)		# saving $ra in stack
+		sw $t3, 4($sp)		# saving $t3 in stack
+		jal reset
+		lw $ra, 0($sp)		# restoring $ra from stavk
+		lw $t3, 4($sp)		# restoring $t3 from stack
+		addiu $sp, $sp, 8
+	# moving changed variables to save them
+	move $s0, $t0	
+	move $s1, $t1
+	move $s2, $t2
+
+	#vector B
+	li $v0, 4
+	la $a0, stringAskForInputB
+	syscall
+	
+	# moving variables to temprorary registers
+	move $t0, $s3			# adress of Vector's B number array
+	move $t1, $s4			# adress of Vector's B order array
+	move $t2, $s5			# size of the arrays
+	add $t3, $t0, $t2		# pointer to the end of number array
+	move $t4, $s7
+	
+	#jalLoop:
+		addiu $sp, $sp, -4	# allocating space in stack
+		sw $ra, 0($sp)		# saving $ra in stack
+		jal loopAddVector	# jump and link would overwrite $ra, but it's saved in stack
+		lw $ra, 0($sp)		# restoring $ra from stack
+		addiu $sp, $sp, 4	# freeing allocated space from stack
+	#jalReset:
+		addiu $sp, $sp, -8
+		sw $ra, 0($sp)
+		sw $t3, 4($sp)
+		jal reset
+		lw $ra, 0($sp)
+		lw $t3, 4($sp)
+		addiu $sp, $sp, 8
+	# moving changed variables to save them
+	move $s3, $t0
+	move $s4, $t1
+	move $s5, $t2
+	move $s7, $t3
+	
+	jr $ra
+
+reset:
+	# arguments:	$t0, $t1 - number and order array to find beggining og
+	#		$t2 - size of the arrays
+	#		$t3 - adress of the end of arrays
+	# returns:	$t0, $t1 - adress of the beggining of arrays
+	# changes:	$t0, $t1, $t3
+	
+	# sometimes the array won't be full, meaning that the stored adress might be the middle of it
+	# to get back to the beggining algorithm goes to the back of the array first, then goes back to the beggining size times
+	loopGoToEnd:
+	beq $t0, $t3, goToStart
+	addi $t0, $t0, 4
+	addi $t1, $t1, 4
+	j loopGoToEnd		
+	
+	goToStart:
+	move $t3, $t2
+		loopGoToStart:
+			beqz $t3, returnReset
+			addi $t0, $t0, -4
+			addi $t1, $t1, -4
+			addi $t3, $t3, -4
+			j loopGoToStart
+	returnReset:
+	jr $ra
+										
+loopAddVector:
+	beqz $t4, returnLoopAddVector		# if user put declared amount of dimensions, stop
+	addi $t4, $t4, -4
+	
+	li $v0, 5
+	syscall
+	bnez $v0, justAdd			# if number is nonzero add it
+	
+	#case if input is zero, add 1 to the order array at proper place
+	lw $t5, ($t1)
+	addi $t5, $t5, 1
+	sw $t5, ($t1)
+	j loopAddVector
+	
+	#case if input isn't zero
+	justAdd:
+	sw $v0, ($t0)				# store input in the proper place in number array
+	lw $t5, ($t1)				# load order value
+	addi $t5, $t5, 1			# add one to the order value (indexing should start at 0 but 1 looks nicer in the output)
+	sw $t5, ($t1)				# storing order value expanded by 1
+	sw $t5, 4($t1)				# adding the order value to next space in order arrag
+	
+	addi $t0, $t0, 4			# pos++
+	addi $t1, $t1, 4
+	
+	bne $t0, $t3 loopAddVector		# if pos == size appendArray, else loop
+	
+	#jalAppendArray
+		# for number array
+		addiu $sp, $sp, -20
+		sw $ra, 0($sp)
+		sw $t1, 4($sp)			# save order array
+		sw $t2, 8($sp)			# save size of arrays
+		sw $t3, 12($sp)			# save whatever those two are
+		sw $t4, 16($sp)
+		move $t1, $t2			# move size to $t1 because append wants it there
+		jal appendArray
+		lw $ra, 0($sp)
+		lw $t1, 4($sp)			# restore order array
+		lw $t2, 8($sp)			# restore size (it changes later *)
+		lw $t3, 12($sp)			# restore whatever those two are
+		lw $t4, 16($sp)
+		addiu $sp, $sp, 20
+		
+		#for order array
+		addiu $sp, $sp, -20
+		sw $ra, 0($sp)
+		sw $t0, 4($sp)			# save number array
+		sw $t2, 8($sp)			# save size
+		sw $t3, 12($sp)			# save whatever those two are
+		sw $t4, 16($sp)
+		move $t0, $t1			# move order array to $t0 so append changes it
+		move $t1, $t2			# move size to $t1 because append wants it there
+		jal appendArray
+		move $t2, $t1			# save new size
+		move $t1, $t0			# get return array on proper place (order array)
+		lw $ra, 0($sp)
+		lw $t0, 4($sp)			# restore number array
+		lw $t2, 8($sp)			# restore size
+		lw $t3, 12($sp)			# restore whatever those two are
+		lw $t4, 16($sp)
+		addiu $sp, $sp, 20
+		
+		lw $t3, -4($t1)			# add the order
+		sw $t3, 0($t1)
+		
+		addi $t2, $t2, 20
+		addi $t3, $t0, 20		# update the adress, now it's adress of end of new number array
+#TODO add 4 again maybe?	
+	j loopAddVector
+	
+	returnLoopAddVector:
+		jr $ra
+		
+appendArray:
+	#arguments: 	$t0 - end of the array to append
+	#		$t1 - size of the array
+	#returns: 	$t0 - adress in appended array to the element that old $t0 was pointing to
+	# changes: 	$t0, $t1, $t2, $t3, $t4
+	
+	goToBegginig:
+		move $t2, $t1
+		loopGoToBeggining:		# to start any operation on array we need to start from it's beggining
+			beqz $t2, endLoopGoToBeggining
+			addi $t2, $t2, -4
+			addi $t0, $t0, -4
+			j loopGoToBeggining
+			endLoopGoToBeggining:
+	createBiggerArray:
+		addi $a0, $t1, 20		# adding 20 (4 * 5) to current size
+		li $v0, 9
+		syscall
+		move $t2, $v0			# moving new array adress to $t2
+		
+		add $t3, $t0, $t1		# adress of the last element of old array
+	rewriteData:
+		beq $t0, $t3, returnAppendArray
+		lw $t4, ($t0)			# load value from old
+		sw $t4, ($t2)			# store in new
+		addi $t0, $t0, 4		# pos++
+		addi $t2, $t2, 4
+		j rewriteData	
+	returnAppendArray:
+		move $t0, $t2			# move new array to $t0 (it's pointing to the same number as it was before)
+		addi $t1, $t0, 40		# expand size
+		
+		jr $ra
+
+scalarProduct:
+	li $s6, 0
+	# vector A
+	move $t0, $s0				# move number array adress
+	move $t1, $s1				# move order array adress
+	add $t2, $s0, $s2			# adress of the end of number array
+	# vector B
+	move $t3, $s3				# move number array adress
+	move $t4, $s4				# move order array adress
+	add $t5, $s3, $s5			# adress of the end of number array
+	# CAN ONLY USE $t 6, 7, 8, 9!!!!
+	
+	orderCheck:
+		beq $t2, $t0, returnScalarProduct	# if at the end of any of the arrays return
+		beq $t5, $t3, returnScalarProduct
+		lw $t7, ($t1)
+		lw $t8, ($t4)
+		slt $t6, $t7, $t8		# if $t7 is smaller move to next order
+		bnez $t6, moveUpVectorA
+		slt $t6, $t8, $t7		# if $t9 is smaller move to next order
+		bnez $t6, moveUpVectorB
+		multiply:			# if none of above, they are the same, multiply numbers
+			lw $t7, ($t0)		# get number from vector A
+			lw $t8, ($t3)		# get number from vector B
+			mult $t7, $t8
+			mflo $t7
+			add $s6, $s6, $t7	# add mult value to scalar result
+			# move up all arrays
+			addi $t0, $t0, 4
+			addi $t1, $t1, 4
+			addi $t3, $t3, 4
+			addi $t4, $t4, 4
+			j orderCheck
+		moveUpVectorA:
+			addi $t0, $t0, 4	# pos++
+			addi $t1, $t1, 4
+			j orderCheck
+		moveUpVectorB:
+			addi $t3, $t3, 4
+			addi $t4, $t4, 4
+			j orderCheck
+	returnScalarProduct:
+		jr $ra	# end of scalarProduct
+
+printAll:
+	li $v0, 4
+	la $a0, stringVectorANumberVectorIs
+	syscall
+	
+	move $t0, $s0
+	add $t3, $t0, $s2
+	addi $sp, $sp, -4
+	sw $ra, ($sp)
+	jal printVector
+	lw $ra, ($sp)
+	addi $sp, $sp, 4
+	
+	li $v0, 4
+	la $a0, stringVectorAOrderVectorIs
+	syscall
+	
+	move $t0, $s1
+	add $t3, $t0, $s2
+	addi $sp, $sp, -4
+	sw $ra, ($sp)
+	jal printVector
+	lw $ra, ($sp)
+	addi $sp, $sp, 4
+	
+	li $v0, 4
+	la $a0, stringVectorBNumberVectorIs
+	syscall
+	
+	move $t0, $s3
+	add $t3, $t0, $s5
+	addi $sp, $sp, -4
+	sw $ra, ($sp)
+	jal printVector
+	lw $ra, ($sp)
+	addi $sp, $sp, 4
+	
+	li $v0, 4
+	la $a0, stringVectorBOrderVectorIs
+	syscall
+	
+	move $t0, $s4
+	add $t3, $t0, $s5
+	addi $sp, $sp, -4
+	sw $ra, ($sp)
+	jal printVector
+	lw $ra, ($sp)
+	addi $sp, $sp, 4
+	
+	li $v0, 4
+	la $a0, stringTheResultIs
+	syscall
+	
+	li $v0, 1
+	move $a0, $s6
+	syscall
+	
+	jr $ra
+		
+printVector:
+	# prints one element of order array to3o many :(
+	printArray:
+	lw $a0, 0($t0)
+	addi $t0, $t0, 4
+	li $v0, 1
+	syscall
+	beq $t0, $t3, returnPrintArray	# if it is the last pos in the array, don't print the comma
+	lw $a0, 4($t0)
+	beqz $a0, returnPrintArray	# if next elem is 0 stop printing (the rest will be zero)
+	printComma:
+		li $v0, 4
+		la $a0, stringCommaSpace
+		syscall
+		j printArray
+	returnPrintArray:
+		jr $ra
+exit:
+	li $v0, 10
+	syscall
