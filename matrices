@@ -381,26 +381,7 @@ multiply:
 	move $t3, $s3			# number B
 	move $t4, $s4			# order B
 	move $t5, $s5			# stuff B
-	
-	while(orderA < columnA * currRow)
-		while(orderB % columnB != currColumn) orderB.pos++
-			if (orderA < orderB) orderA.pos++, numberA++
-			else if(orderB < orderA) orderB.pos++, numberB++
-			else multiply, all++
 
-1, 2, 3, 4
-0, 0, 4, 0
-3, 4, 0, 0
-0, 0, 0, 0
-
-1, 2, 3, 4, 0, 0, 4, 0, 3, 4, 0, 0, 0, 0, 0, 0
-
-1, 2, 3, 4, 5, 0, 0, 3, 0, 4, 0, 0, 0, 0, 0, 0
-
-1, 2, 3, 4
-5, 0, 0, 3
-0, 4, 0, 0
-0, 0, 0, 0
 
 printMatrice:
 	# arguments:		$t0 - number array
@@ -452,4 +433,5 @@ printMatrice:
 exit:
 	li $v0, 10
 	syscall	
-		
+
+
