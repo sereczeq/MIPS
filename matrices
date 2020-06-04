@@ -33,12 +33,7 @@ main:
 	jal askForCoordinates
 	jal printMatrix
 	j exit
-	# Enter matrice A dimensions
-	# Enter matrice B dimensions
-	# Check if can multiply them
-	# Get input:
-		# 
-
+	
 askForDimensions:
 	
 	la $s2, MatriceAStuff
@@ -381,7 +376,15 @@ multiply:
 	move $t3, $s3			# number B
 	move $t4, $s4			# order B
 	move $t5, $s5			# stuff B
-
+	
+	lw $t6, ($s2)
+	add $t6, $t6, $t0
+	loopMultiply:
+		#beq $t6, $t0, returnMultiply
+		lw $t7, ($t1)
+		
+		#jal getMirrorIndex
+	
 
 printMatrice:
 	# arguments:		$t0 - number array
@@ -432,6 +435,6 @@ printMatrice:
 
 exit:
 	li $v0, 10
-	syscall	
+	syscall
 
 
