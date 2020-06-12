@@ -1,0 +1,433 @@
+#List 6 (04.06.2020):
+#Please write a program that asks to enter two sparse matrices, and then calculate their product.
+#More memory-saving solutions will be scored higher.
+ 
+.data
+    contentsA: .space 32
+    orderA: .space 32
+    parametersA: .space 32
+    contentsB: .space 32
+    orderB: .space 32
+    parametersB: .space 32
+    contentsR: .space 32
+    orderR: .space 32
+    rowsA: .asciiz "Please input the number of rows of A\n"
+    columnsARowsB: .asciiz "Please input the number of columns of A and rows of B\n"
+    columnsB: .asciiz "Please input the number of columns of B\n"
+    matrixA: .asciiz "Please input contents of A (they will fill the matrix row by row)\n"
+    matrixB: .asciiz "Please input contents of B (they will fill the matrix row by row)\n"
+    printA: .asciiz "Matrix A:\n"
+    printB: .asciiz "Matrix B:\n"
+    result: .asciiz "The product of A and B\n"
+    space: .asciiz " "
+    enter: .asciiz "\n"
+   
+.text
+#s0, s1- contents and order of A
+#s2- store size, rows, columns, number of elements of A
+#s3, s4- contents and order of B
+#s5- store size, rows, columns, number of elements of B
+#s6, s7- contents and order of result
+main:
+    jal matrixDimensions
+    jal matrixSetUp
+    jal matrices
+    jal printAB
+    jal multiply
+    jal printRes
+    j exit
+   
+exit:
+    li $v0, 10
+    syscall             #exit
+   
+matrixDimensions:
+    la $s2, parametersA
+    la $s5, parametersB
+    li $v0, 4
+    la $a0, rowsA
+    syscall             #print str
+    li $v0, 5
+    syscall             #read int
+    sw $v0, 4($s2)          #store number of rows in A
+    move $t7, $v0           #also save it in t7 for size
+   
+    li $v0, 4
+    la $a0, columnsARowsB
+    syscall             #print str
+    li $v0, 5
+    syscall
+    sw $v0, 8($s2)          #store number of columns in A
+    sw $v0, 4($s5)          #store number of rows in A
+    move $t6, $v0           #also save it in t6 for size
+   
+    mul $t7, $t6, $t7       #calculate size of A
+    sw $t7, 12($s2)         #store size of A
+   
+    li $v0, 4
+    la $a0, columnsB
+    syscall             #print str
+    li $v0, 5
+    syscall
+    sw $v0, 8($s5)          #store number of columns in B
+    move $t7, $v0           #also save it in t7 for size
+   
+    mul $t7, $t6, $t7       #calculate size of B
+    sw $t7, 12($s5)         #store size of B
+   
+    j return
+   
+matrixSetUp:
+    la $s0, contentsA       #assign the arrays
+    la $s1, orderA
+    la $s3, contentsB
+    la $s4, orderB
+    j return
+   
+matrices:
+    #for matrix A
+    li $v0, 4
+    la $a0, matrixA
+    syscall             #print str
+    #move the values so for the fillMatrix to use
+    move $t0, $s0           #array of values
+    move $t1, $s1           #array of orders
+    lw $t2, 12($s2)         #max elements
+    move $t8, $0            #counter for the matrix filling loop
+    move $t7, $0            #how many elements are actually stored
+   
+    addi $sp, $sp, -4       #move stack pointer
+    sw $ra, 0($sp)          #put ra on the stack
+    jal fillMatrix
+    lw $ra, 0($sp)          #reset ra
+    addi $sp, $sp, 4        #move back the stack pointer
+    move $s0, $t0           #move the values to their registers
+    move $s1, $t1
+    sw $t7, 0($s2)
+    la $s0, contentsA
+    la $s1, orderA
+   
+    #for matrix B
+    li $v0, 4
+    la $a0, matrixB
+    syscall             #print str
+    #move the values so for the fillMatrix to use
+    move $t0, $s3           #array of values
+    move $t1, $s4           #array of orders
+    lw $t2, 12($s5)         #max elements
+    move $t8, $0            #counter for the matrix filling loop
+    move $t7, $0            #how many elements are actually stored
+   
+    addi $sp, $sp, -4       #move stack pointer
+    sw $ra, 0($sp)          #put ra on the stack
+    jal fillMatrix
+    lw $ra, 0($sp)          #reset ra
+    addi $sp, $sp, 4        #move back the stack pointer
+    move $s3, $t0           #move the values to their registers
+    move $s4, $t1
+    sw $t7, 0($s5)
+    la $s3, contentsB
+    la $s4, orderB
+   
+fillMatrix:
+    beq $t2, $t8, return        #check if the loop was performed the specified amount of times
+    li $v0, 5
+    syscall             #read int
+    lw $t9, ($t1)           #increase the order of the value
+    addi $t9, $t9, 1
+    sw $t9, ($t1)
+    bnez $v0, addElem       #if input is non 0 add it to the array
+    addi $t8, $t8, 1        #increase the counter
+    j fillMatrix            #loop
+   
+addElem:
+    #for number array
+    sw $v0, 0($t0)          #add the element into the array
+    addi $t0, $t0, 4        #increase the index
+    #for order array
+    addi $t1, $t1, 4        #increase the index
+    sw $t9, ($t1)           #save the same number to the next position so it can be increased easily later
+    addi $t8, $t8, 1        #increase the counter
+    addi $t7, $t7, 1        #increase the size
+    j fillMatrix            #loop
+   
+printAB:
+    li $v0, 4
+    la $a0, printA
+    syscall             #print str
+    # print matrice A       move so printMatrix can use the values
+    move $t0, $s0           #number array
+    move $t1, $s1           #order array
+    lw $t2, 4($s2)          #rows
+    lw $t3, 8($s2)          #columns
+    lw $t4, 12($s2)         #size (rows*columns)
+   
+    addi $sp, $sp, -4
+    sw $ra, ($sp)           #store ra on the stack
+    jal printMatrix
+    lw $ra, ($sp)           #restore ra
+    addi $sp, $sp, 4
+   
+    li $v0, 4
+    la $a0, printB
+    syscall             #print str
+    # print matrice B       move so printMatrix can use the values
+    move $t0, $s3           #number array
+    move $t1, $s4           #order array
+    lw $t2, 4($s5)          #rows
+    lw $t3, 8($s5)          #columns
+    lw $t4, 12($s5)         #size (rows*columns)
+   
+    addi $sp, $sp, -4
+    sw $ra, ($sp)           #store ra on the stack
+    jal printMatrix
+    lw $ra, ($sp)
+    addi $sp, $sp, 4        #restore ra
+   
+    j return
+   
+printRes:
+    li $v0, 4
+    la $a0, result
+    syscall            
+    #move elements for printMatrix
+    move $t0, $s6           #number array
+    move $t1, $s7           #order array
+    lw $t2, 4($s2)          #rows
+    lw $t3, 8($s5)          #columns
+    mul $t4, $t2, $t3       #size (rows*columns)
+    addi $sp, $sp, -4
+    sw $ra, ($sp)
+    jal printMatrix
+    lw $ra, ($sp)
+    addi $sp, $sp, 4
+    j return
+   
+printMatrix:
+#t0- number array
+#t1- order array
+#t2- rows
+#t3- columns
+#t4- size
+ 
+#t8- counter
+#t9- store elemesnts or orders temporarily
+    li $t8, 0           #counter
+    printLoop:
+    beq $t8, $t4, return        #stop printing if printed all elements
+    addi $t8, $t8, 1        #counter++
+    lw $t9, ($t1)           #get order
+    blt $t8, $t9, zero      #if counter<order print 0
+    lw $a0, ($t0)           #else print the number
+    li $v0, 1
+    syscall
+    addi $t0, $t0, 4        #increase indexes
+    addi $t1, $t1, 4
+    j checkEnter            #check if at the end of a row
+   
+    zero:
+    li $a0, 0
+    li $v0, 1
+    syscall             #print 0
+   
+    checkEnter:
+    div $t6, $t8, $t3       #t8 modulo t3
+    mfhi $t6
+    beqz $t6, newLine       #if counter % columns = 0; new line
+    li $v0, 4
+    la $a0, space
+    syscall             #else print space
+    j printLoop         #loop
+   
+    newLine:
+    li $v0, 4
+    la $a0, enter
+    syscall             #print new line
+    j printLoop
+ 
+return:
+    jr $ra
+   
+#converts index into coordinates
+getCoordinates: #input: t2- parameters of matrice, t9- index; returns: t8- row, t9- column
+    lw $t8, 8($t2)          #t8- columns
+    div $t8, $t9, $t8       #index / columns
+    mfhi $t9            #t9= index % columns, also t9= column
+    bnez $t9, add1          #if column != 0, we need to increase t9 (row) by 1
+    lw $t9, 8($t2)          #else we are at the last element of the row, so column= columns
+    j return
+   
+    add1:
+    addi $t8, $t8, 1        #row+= 1
+    j return
+ 
+#converts coordinates into index   
+getIndex:   #input: t2- parameters of matrice, t8- row, t9- column; returns: t9- index
+    lw $t7, 8($t2)          #t7- columns
+    addi $t8, $t8, -1       #we need to decrease row by 1 to get the correct index
+    mul $t8, $t8, $t7       #row * number of columns
+    add $t9, $t8, $t9       #index= row * number of columns + column
+    j return
+   
+#returns value at index $t2
+getAtIndex: #input: t0- elements array, t1- order array, t9- index; returns: t9- number at index
+    lw $t8, ($t1)           #t8- order
+    beq $t8, $t9, returnVal     #if order = index, return value at thet index
+    blt $t8, $t9, increaseIndex #if order < index, order++
+    bgt $t8, $t9, return0       #if order > index, the element at index is a 0
+   
+    returnVal:
+    lw $t9, ($t0)           #return the value
+    j return
+   
+    increaseIndex:
+    addi $t1, $t1, 4        #increase both indexes
+    addi $t0, $t0, 4
+    j getAtIndex            #loop
+   
+    return0:
+    li $t9, 0           #return 0
+    j return
+   
+getAtCoordinates:           #combines getIndex and getAtIndex for easier calling   
+#input:  t0- elements array,
+    #t1- order array,
+    #t2- parameters of matrice,
+    #t8- row,
+    #t9- column;
+#returns: t9- number at coordinates
+#modifies: t7
+    addi $sp, $sp, -4
+    sw $ra, ($sp)
+    jal getIndex
+    jal getAtIndex
+    lw $ra, 0($sp)          #reset ra
+    addi $sp, $sp, 4        #move back the stack pointer
+    j return
+ 
+multiplyMatricesCell:
+#t0, t1- contents and order of A
+#t2- store size, rows, columns, number of elements of A
+#t3, t4- contents and order of B
+#t5- store size, rows, columns, number of elements of B
+#t5- rows of B
+#t8- row,
+#t9- column
+#t6- result
+#t7- used by called procedures
+#a3- temporary storage
+ 
+    li $t6, 0
+    lw $t5, 4($s5)          #counter ("i")
+   
+mL: beqz $t5, return        #exit condition
+    #for matrix A
+   
+    #store on stack + set up for getAtCoordinates
+    addi $sp, $sp, -20      #move stack pointer
+    sw $t0, 16($sp)         #I need to store t0 and t1, because getAtCoordinates changes them
+    sw $t1, 12($sp)
+    sw $t8, 8($sp)         
+    sw $t9, 4($sp)          #store row and column on stack
+    sw $ra, ($sp)
+    move $t9, $t5           #column= i     
+    jal getAtCoordinates        #get A[row][i]
+   
+    #restore to the previous state
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    move $a3, $t9           #a3= A[row][i]
+    lw $t0, 12($sp)
+    lw $t1, 8($sp)
+    lw $t8, 4($sp)
+    lw $t9, 0($sp)
+    addi $sp, $sp, 16       #back to initial state
+    beqz $t9, skipA         #if element is 0 don't multiply
+   
+    #for matrix B
+   
+    #store on stack + set up for getAtCoordinates
+    addi $sp, $sp, -24      #store parameters of matrix A on stack
+    sw $t0, 20($sp)         #elements
+    sw $t1, 16($sp)         #order
+    sw $t2, 12($sp)         #parameters
+    sw $t8, 8($sp)          #row
+    sw $t9, 4($sp)          #column
+    sw $ra, ($sp)           #ra
+    #set up for getAtCoordinates
+    move $t0, $t3           #number array
+    move $t1, $t4           #order array
+    move $t2, $s5           #parameters
+    move $t8, $t5           #row= i
+    jal getAtCoordinates        #get B[i][column]
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    beqz $t9, skipB         #if element is 0 don't multiply
+    mul $a3, $a3, $t9       #a3= A[row][i] * B[i][column]
+    add $t6, $t6, $a3       #t6+= A[row][i] * B[i][column]
+    #restore to the the previous state
+skipB:  lw $t0, 16($sp)         #elements
+    lw $t1, 12($sp)         #order
+    lw $t2, 8($sp)          #parameters
+    lw $t8, 4($sp)          #row
+    lw $t9, 0($sp)          #column
+    addi $sp, $sp, 20
+   
+skipA:  addi $t5, $t5, -1       #counter--
+    j mL
+ 
+ 
+multiply:
+    la $s6, contentsR       #set up result array
+    la $s7, orderR
+    move $a0, $s6           #use different registers
+    move $v0, $s7
+   
+    #4($s2)- rows of res
+    #8($s5)- columns of res
+   
+    #for matrix A
+    move $t0, $s0           #set the values into temporaries
+    move $t1, $s1
+    move $t2, $s2
+    #for matrix B
+    move $t3, $s3
+    move $t4, $s4
+    move $t5, $s5
+   
+    li $t8, 0           #counter for L1 (row)
+    lw $a1, 4($s2)          #A.length
+    lw $a2, 8($s5)          #B[1].length
+   
+L1: beq $t8, $a1, endLoop       #for(int row=1; row <= A.length; row++)
+    addi $t8, $t8, 1
+    li $t9, 0           #counter for L2 (column)
+    L2: beq, $t9, $a2, L1   #for(int column=1; column <= B[1].length; column++)
+        addi $t9, $t9, 1
+        addi $sp, $sp, -4
+        sw $ra, ($sp)
+        jal multiplyMatricesCell    #t6= element of the result matrix
+        lw $ra, ($sp)
+        addi $sp, $sp, 4
+       
+        lw $t7, ($v0)       #increase order by 1
+        addi $t7, $t7, 1
+        sw $t7, ($v0)
+        bnez $t6, addToResult   #if element != 0; add it
+        j L2            #else just loop
+       
+        addToResult:
+            #for number array
+            sw $t6, 0($a0)      #add the value to order array
+            addi $a0, $a0, 4    #increase index
+            #for order array
+            addi $v0, $v0, 4    #increase index
+            sw $t7, ($v0)       #save the same number to the next position so it can be increased easily later
+            j L2            #loop
+ 
+    endLoop:
+    move $s6, $a0           #restore to proper registers
+    move $s7, $v0
+    la $s6, contentsR
+    la $s7, orderR
+    j return

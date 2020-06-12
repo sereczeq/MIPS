@@ -1,6 +1,5 @@
 .data
 
-#TODO: do I undestabd
 
 .word
 MatriceAStuff: .space 20
@@ -16,6 +15,7 @@ stringCantMultiply: .asciiz "Impossible to multiply, enter different dimensions\
 
 stringMatriceAIs: .asciiz "Matrice A:\n"
 stringMatriceBIs: .asciiz "Matrice B:\n"
+stringMatriceCIs: .asciiz "Matrice C:\n"
 stringCommaSpace: .asciiz ", "
 stringEnter: .asciiz "\n"
 
@@ -31,9 +31,248 @@ main:
 	jal askForDimensions
 	jal instantiateArrays
 	jal askForCoordinates
+	jal multiply
 	jal printMatrix
 	j exit
+
+getIndex:
+		# arguments	$t0 - row
+		#		$t1 - column
+		#		$t2 - columns
+		# returns	$t0 - index
+		# changes	$t0...$t3
+		
+		li $t3, 1
+		
+		loopGetIndex:
+			
+			addi $t1, $t1, -1
+			beqz $t1, reduceRow
+			j skipReduceRow
+			reduceRow:
+				move $t1, $t2
+				addi $t0, $t0, -1
+				beqz $t0, returnGetIndex
+		skipReduceRow:
+		addi $t3, $t3, 1
+		j loopGetIndex
+	returnGetIndex:
+		move $t0, $t3
+		jr $ra
+			
+getAtIndex:
+	# arguments:		$t0 - number array
+	#			$t1 - order array
+	#			$t2 - index
+	# returns:		$t0 - number from index
+	# changes		$t0 ... $t4
 	
+	loopGetAtIndex:
+	lw $t3, ($t1)
+	beq $t2, $t3, returnNumberGetAtIndex
+	slt $t3, $t2, $t3
+	bgtz $t3, returnZeroGetAtIndex
+	addi $t1, $t1, 4
+	addi $t0, $t0, 4
+	j loopGetAtIndex
+	
+	returnNumberGetAtIndex:
+	lw $t0, ($t0)
+	jr $ra
+	
+	returnZeroGetAtIndex:
+	li $t0, 0
+	jr $ra
+
+multiply:
+	move $t0, $s0					# number array A
+	move $t1, $s1					# order array A
+	move $t2, $s2					# stuff A
+	move $t3, $s3					# number array B
+	move $t4, $s4					# order array B
+	move $t5, $s5					# stuff B
+	addiu $sp, $sp, -8
+	sw $s6, 0($sp)
+	sw $s7, 4($sp)
+	
+	li $t6, 1					# column
+	li $t7, 1					# row
+	# to find out which numbers to multiply: for example a number that will end up in C (2, 3) is result of multiplying
+	# matrice A at 2, x and matrice B at x, 3 (where x goes from 0 to the amount of columns in A (or rows in B ) )
+	# the number going into A is row, and the one going into B is column, of the number at C
+	li $t8, 0					# "the X", it starts -1 because in multiplyLoop I immediately add 1
+	
+	multiplyLoop:
+		
+		lw $t9, 8($t5)				# amount of columns of matrice B
+		beq $t8, $t9, addRows			# if at the end of matrice: row++
+		addi $t8, $t8, 1
+		j skipResetColumns
+			addRows:
+				# if we reset the X, it also meant that all multiplication that was supposed
+				# to happen happened, so we can increase order array
+				#lw $t8, ($s7)		# load value from order array (can do it in a place od "the X", because I'm resetting it anyway
+				#addi $t8, $t8, 1	# add one
+				#sw $t8, ($s7)		# store it again
+				li $t8, 1		# reset "the X"
+				
+				addi $s6, $s6, 4
+				addi $s7, $s7, 4
+				
+				beq $t6, $t9, resetColumns	# if row is at the end of matrix
+				addi $t6, $t6, 1
+				j skipResetColumns
+			resetColumns:
+				lw $t9, 4($t2)			# amount of rows of matrice A
+				beq $t7, $t9, returnMultiplyLoop
+				li $t6, 1			# column = 0
+				addi $t7, $t7, 1		# row++
+		skipResetColumns:
+			#jal getIndex
+			addiu $sp, $sp, -24
+			sw $ra, 0($sp)
+			sw $t0, 4($sp)
+			sw $t1, 8($sp)
+			sw $t2, 12($sp)
+			sw $t3, 16($sp)
+			sw $t4, 20($sp)
+			move $t0, $t7			# row (of C matrice)
+			move $t1, $t8			# column (the X)
+			lw $t2, 8($t2)			# total amount of columns
+			
+			jal getIndex
+			
+			move $t2, $t0			# move index to $t2
+			lw $t0, 4($sp)			# load number array
+			lw $t1, 8($sp)			# load order array
+			
+			jal getAtIndex
+			
+			move $t9, $t0			# store value in $t9
+			
+			lw $ra, 0($sp)
+			lw $t0, 4($sp)
+			lw $t1, 8($sp)
+			lw $t2, 12($sp)
+			lw $t3, 16($sp)
+			lw $t4, 20($sp)
+			addiu $sp, $sp, 24
+			
+			beqz $t9, multiplyLoop		# getAtIndex will return 0 if the index does not exist
+							# if value at current value is 0, go to next index
+							# else save the value from number array at this index
+							
+			addiu $sp, $sp, -4		# weird stack pointer operation 1
+			sw $t9, ($sp)
+			
+			# check if there is element in array B
+			#jal getIndex
+			addiu $sp, $sp, -24
+			sw $ra, 0($sp)
+			sw $t0, 4($sp)
+			sw $t1, 8($sp)
+			sw $t2, 12($sp)
+			sw $t3, 16($sp)
+			sw $t4, 20($sp)
+			move $t0, $t8			# row (the X)
+			move $t1, $t6			# column (of C matrice)
+			lw $t2, 8($t2)			# total amount of columns
+			
+			jal getIndex
+			
+			move $t2, $t0			# move index to $t2
+			lw $t0, 16($sp)			# load number array
+			move $t1, $t4			# load order array
+			
+			jal getAtIndex
+			
+			move $t9, $t0			# store value in $t9
+			
+			move $t9, $t0			# store index in $t9
+			lw $ra, 0($sp)
+			lw $t0, 4($sp)
+			lw $t1, 8($sp)
+			lw $t2, 12($sp)
+			lw $t3, 16($sp)
+			lw $t4, 20($sp)
+			addiu $sp, $sp, 24
+			
+			addiu $sp, $sp, 4		# weird stack pointer operation 2
+			beqz $t9, multiplyLoop #DONE TODO: free the stack from old $t9
+			addiu $sp, $sp, -4		# weird stack pointer operation 3
+			
+			# weird stack pointer operations were the only way I could find to store old $t9,
+			# operation 1 adds -4 to stack pointer
+			# operation 2 adds 4 to stack pointer in case we branch to multiplyLoop
+			# if we haven't branched to multiplyLoop add -4 again
+			
+			
+			#if we are here - means we can multiply the numbers
+			
+			addiu $sp, $sp, -4
+			sw $t8, ($sp)
+			lw $t8, 4($sp)			# load old $t9 (value from matrice A)
+			addiu $sp, $sp, 4
+			
+			# the same routine as with adding values to matrices A and B
+			mul $t9, $t8, $t9		# calculate the number
+			lw $t8, ($s6)			# get value from number array of C
+			add $t9, $t8, $t9		# add old value to new value
+			sw $t9, ($s6)			# store it into number array of C
+			#lw $t9, ($s7)			# load value from order array
+			#addi $t9, $t9, 1		# increment it by one
+			#sw $t9, ($s7)			# put it back in order array
+			#sw $t9, 4($s7)			# put it also on next place of order array, to keep count
+			
+			
+			lw $t8, -4($sp)			# retrieve "the X"
+			addiu $sp, $sp, 4		# reset stack
+			
+			j multiplyLoop
+		
+	returnMultiplyLoop:
+	
+	lw $s6, 0($sp)
+	lw $s7, 4($sp)
+	addiu $sp, $sp, 8
+	
+	jr $ra
+	
+
+						
+
+	
+setAtIndex:
+	# arguments:		$t0 - number array
+	#			$t1 - order array
+	#			$t3 - index
+	#			$t4 - number to set
+	# returns:		$t0 - previous number from index
+	
+	loopSetAtIndex:
+	lw $t4, ($t1)
+	beq $t3, $t4, returnNumberSetAtIndex
+	slt $t4, $t3, $t4
+	bgtz $t4, returnZeroSetAtIndex
+	addi $t1, $t1, 4
+	addi $t0, $t0, 4
+	j loopSetAtIndex
+	
+	returnNumberSetAtIndex:
+	lw $t1, ($t0)
+	sw $t4, ($t0)
+	move $t0, $t1
+	jr $ra
+	
+	returnZeroSetAtIndex:
+	li $t0, 0
+	jr $ra
+	
+
+	
+
+
+
 askForDimensions:
 	
 	la $s2, MatriceAStuff
@@ -126,6 +365,26 @@ instantiateArrays:
 	li $t0, 20		# save the initial size of arrays
 	sw $t0, 0($s2)
 	sw $t0, 0($s5)
+	
+	# return matrice C (At this point I was too tired to make it expandable, so array X will have fixed size)
+	lw $t0, 8($s2)		# rows of A
+	lw $t1, 4($s5)		# columns of B
+	mul $a0, $t0, $t1	# $a0 - number to bytes to allocate
+	li $t0, 4
+	mul $a0, $a0, $t0	# obligatory *4
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s6, $v0		# save memory adress of array of vector 
+	
+	# return matrice C (At this point I was too tired to make it expandable, so array X will have fixed size)
+	lw $t0, 8($s2)		# rows of A
+	lw $t1, 4($s5)		# columns of B
+	mul $a0, $t0, $t1	# $a0 - number to bytes to allocate
+	li $t0, 4
+	mul $a0, $a0, $t0	# obligatory *4
+	li $v0, 9		# 9 syscall - sbrk (allocate heap memory)
+	syscall
+	move $s7, $v0		# save memory order of order of vector 
 	
 	jr $ra
 	
@@ -242,7 +501,7 @@ loopAddVector:
 	lw $t5, ($t1)				# load order value
 	addi $t5, $t5, 1			# add one to the order value (indexing should start at 0 but 1 looks nicer in the output)
 	sw $t5, ($t1)				# storing order value expanded by 1
-	sw $t5, 4($t1)				# adding the order value to next space in order arrag
+	sw $t5, 4($t1) #DONE TODO: might go out of bounds, fix that	# adding the order value to next space in order array
 	
 	addi $t0, $t0, 4			# pos++
 	addi $t1, $t1, 4
@@ -294,6 +553,7 @@ loopAddVector:
 	j loopAddVector
 	
 	returnLoopAddVector:
+		sw $t0, 4($t1)			# fixind todo (for last index always goes out of bounds
 		jr $ra
 		
 appendArray:
@@ -367,56 +627,27 @@ printMatrix:
 		lw $ra, ($sp)
 		addi $sp, $sp, 4
 	
+	# print matrice C
+	move $t0, $s6
+	move $t1, $s7
+	lw $t2, 8($s5)
+	lw $t3, 4($s2)
+	mul $t4, $t2, $t3
+	
+	li $v0, 4
+	la $a0, stringMatriceCIs
+	syscall
+	
+		#jal printMatrice
+		addi $sp, $sp, -4
+		sw $ra, ($sp)
+		jal printMatrice
+		lw $ra, ($sp)
+		addi $sp, $sp, 4
+	
 	jr $ra
+		
 	
-multiply:
-	move $t0, $s0			# number A
-	move $t1, $s1			# order A
-	move $t2, $s2			# stuff A
-	move $t3, $s3			# number B
-	move $t4, $s4			# order B
-	move $t5, $s5			# stuff B
-	
-	lw $t6, 4($s2)			# number of rows in new matrice
-	lw $t7, 8($s5)			# number of columns in new matrice
-	
-	loopMult:
-		lw $t8, ($t1)		# load index
-		
-	getIndex:
-		# arguments	$t0 - row
-		#		$t1 - column
-		#		$t2 - columns
-		# returns	$t0 - index
-		
-		bne $t1, $t2, reduceRow		# if column == columns, reduce row by one
-		mul $t0, $t0, $t2		# else index is just row * columns
-		jr $ra
-		reduceRow:
-		addi $t0, $t0, -1		# if at the end, reduce row by one
-		add $t0, $t0, $t1		# then index is row * columns
-		
-		jr $ra 
-	
-	getCoordinates:
-		# arguments	$t0 - index
-		#		$t1 - total columns
-		# returns	$t0 - row
-		#		$t1 - column
-		# changes	$t0, $t1, $t2
-		
-		div $t0, $t0, $t1		# row = index / columns
-		mfhi $t2			# column = index % columns
-		bgtz $t2, addOne		# if modulo is bigger than zero(means not at the end of the row) add one to row
-		move $t2, $t1			# if modulo is zero, it means that element is at the end of row (column = columns)
-		j skipAddOne
-		addOne:
-			addi $t0, $t0, 1	# add one to row
-		skipAddOne:
-		
-		move $t1, $t2			# move column to $t1
-		
-		jr $ra
 
 printMatrice:
 	# arguments:		$t0 - number array
