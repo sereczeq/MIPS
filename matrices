@@ -16,7 +16,7 @@ stringCantMultiply: .asciiz "Impossible to multiply, enter different dimensions\
 stringMatriceAIs: .asciiz "Matrice A:\n"
 stringMatriceBIs: .asciiz "Matrice B:\n"
 stringMatriceCIs: .asciiz "Matrice C:\n"
-stringCommaSpace: .asciiz ", "
+stringCommaSpace: .asciiz "\t"
 stringEnter: .asciiz "\n"
 
 .text
@@ -69,6 +69,7 @@ getAtIndex:
 	
 	loopGetAtIndex:
 	lw $t3, ($t1)
+	beqz $t3, returnZeroGetAtIndex
 	beq $t2, $t3, returnNumberGetAtIndex
 	slt $t3, $t2, $t3
 	bgtz $t3, returnZeroGetAtIndex
@@ -119,14 +120,14 @@ multiply:
 				addi $s6, $s6, 4
 				addi $s7, $s7, 4
 				
-				beq $t6, $t9, resetColumns	# if row is at the end of matrix
-				addi $t6, $t6, 1
+				beq $t7, $t9, resetColumns	# if row is at the end of matrix
+				addi $t7, $t7, 1
 				j skipResetColumns
 			resetColumns:
 				lw $t9, 4($t2)			# amount of rows of matrice A
-				beq $t7, $t9, returnMultiplyLoop
-				li $t6, 1			# column = 0
-				addi $t7, $t7, 1		# row++
+				beq $t6, $t9, returnMultiplyLoop
+				li $t7, 1			# column = 0
+				addi $t6, $t6, 1		# row++
 		skipResetColumns:
 			#jal getIndex
 			addiu $sp, $sp, -24
@@ -176,7 +177,7 @@ multiply:
 			sw $t4, 20($sp)
 			move $t0, $t8			# row (the X)
 			move $t1, $t6			# column (of C matrice)
-			lw $t2, 8($t2)			# total amount of columns
+			lw $t2, 8($t5)			# total amount of columns
 			
 			jal getIndex
 			
@@ -553,7 +554,7 @@ loopAddVector:
 	j loopAddVector
 	
 	returnLoopAddVector:
-		sw $t0, 4($t1)			# fixind todo (for last index always goes out of bounds
+		sw $0, 4($t1)			# fixind todo (for last index always goes out of bounds
 		jr $ra
 		
 appendArray:
@@ -630,8 +631,8 @@ printMatrix:
 	# print matrice C
 	move $t0, $s6
 	move $t1, $s7
-	lw $t2, 8($s5)
-	lw $t3, 4($s2)
+	lw $t2, 4($s2)
+	lw $t3, 8($s5)
 	mul $t4, $t2, $t3
 	
 	li $v0, 4
